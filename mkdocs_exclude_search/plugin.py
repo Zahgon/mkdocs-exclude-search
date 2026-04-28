@@ -48,39 +48,7 @@ class ExcludeSearch(BasePlugin):
         """
         Validate mkdocs-exclude-search plugin configuration.
         """
-        if not ("search" in plugins or "material/search" in plugins):
-            message = (
-                "mkdocs-exclude-search plugin is activated but has no effect as "
-                "search plugin is deactivated!"
-            )
-            logger.debug(message)
-            raise ValueError(message)
-
-        if (
-            not self.config["exclude"]
-            and not self.config["exclude_unreferenced"]
-            and not self.config["exclude_tags"]
-        ):
-            message = (
-                "No excluded search entries selected for mkdocs-exclude-search, "
-                "the plugin has no effect!"
-            )
-            logger.info(message)
-            raise ValueError(message)
-
-        try:
-            if self.config["ignore"]:
-                invalid_ignored = [x for x in self.config["ignore"] if "#" not in x]
-                message = (
-                    f"mkdocs-exclude-search configuration for `ignore` can only be "
-                    f"headers (containing `#`), the following entries will be ignored: {invalid_ignored}"
-                )
-                logger.info(message)
-                self.config["ignore"] = [
-                    x for x in self.config["ignore"] if not x in invalid_ignored
-                ]
-        except KeyError:
-            pass
+        pass
 
     @staticmethod
     def resolve_excluded_records(
@@ -96,15 +64,7 @@ class ExcludeSearch(BasePlugin):
         Returns:
             A list with each resolved entry as a tuple of (file-name, header-name/None).
         """
-        excluded_entries = []
-        # TODO: This currently could exclude files with an excluded folder of the same name.
-        for entry in to_exclude:
-            try:
-                file_name, header_name = entry.split("#")
-            except ValueError:
-                file_name, header_name = entry, None  # type: ignore
-            excluded_entries.append((file_name, header_name))
-        return excluded_entries
+        pass
 
     @staticmethod
     def resolve_ignored_chapters(to_ignore: List[str]) -> List:
@@ -121,15 +81,7 @@ class ExcludeSearch(BasePlugin):
             A list with each resolved entry as a tuple of (file-name, header-name/None),
             and with the supplemented main_name entries.
         """
-        file_name_entries = []
-        file_header_names_entries = []
-        for entry in to_ignore:
-            file_name, header_name = entry.split("#")
-            file_name_entries.append((file_name, None))
-            file_header_names_entries.append((file_name, header_name))
-
-        ignored_chapters = file_name_entries + file_header_names_entries  # type: ignore
-        return ignored_chapters
+        pass
 
     @staticmethod
     def is_unreferenced_record(rec_file_name: str, navigation_items: List[str]):
@@ -137,13 +89,12 @@ class ExcludeSearch(BasePlugin):
         Unreferenced markdown files that are not contained in mkdocs.yml navigation
         nav section.
         """
-        return rec_file_name not in navigation_items
+        pass
 
     @staticmethod
     def is_tag_record(rec_file_name: str):
         """Tags entries of mkdocs-plugin-tags"""
-        # TODO: Surface in readme
-        return "tags.html" in rec_file_name
+        pass
 
     @staticmethod
     def is_root_record(rec_file_name: str):
@@ -151,7 +102,7 @@ class ExcludeSearch(BasePlugin):
 
         Collides with is_tag_record as these have no slash. Handled by order in select_included_records.
         """
-        return "/" not in rec_file_name
+        pass
 
     @staticmethod
     def is_ignored_record(
@@ -170,14 +121,7 @@ class ExcludeSearch(BasePlugin):
         Returns:
             True if the record matches with the to_ignore list, None if not.
         """
-        if any(
-            (
-                fnmatch(rec_file_name[:-1], f"{file_name.replace('.md', '')}")
-                and header_name == rec_header_name
-                for (file_name, header_name) in to_ignore
-            )
-        ):
-            return True
+        pass
 
     @staticmethod
     def is_excluded_record(
@@ -196,14 +140,7 @@ class ExcludeSearch(BasePlugin):
         Returns:
             True if the record matches with the to_exclude list, None if not.
         """
-        if any(
-            (
-                fnmatch(rec_file_name[:-1], f"{file_name.replace('.md', '')}")
-                and (rec_header_name == header_name or not header_name)
-                for (file_name, header_name) in to_exclude
-            )
-        ):
-            return True
+        pass
 
     def select_included_records(
         self,
@@ -230,80 +167,9 @@ class ExcludeSearch(BasePlugin):
         Returns:
             A new search index as a list of dicts.
         """
-        included_records = []
-        for record in search_index["docs"]:
-            try:
-                rec_file_name, rec_header_name = record["location"].split("#")
-            except ValueError:
-                rec_file_name, rec_header_name = record["location"], None
-
-            # pylint: disable=no-else-continue
-            if exclude_tags and self.is_tag_record(rec_file_name):
-                logger.debug(f"exclude-search (excludedTags): {record['location']}")
-                continue
-            elif self.is_root_record(rec_file_name):
-                # logger.debug(f"include-search (requiredRoot): {record['location']}")
-                included_records.append(record)
-            elif exclude_unreferenced and self.is_unreferenced_record(
-                rec_file_name=rec_file_name, navigation_items=navigation_items
-            ):
-                logger.debug(
-                    f"exclude-search (excludedUnreferenced): {record['location']}"
-                )
-                continue
-            elif self.is_ignored_record(rec_file_name, rec_header_name, to_ignore):
-                logger.debug(f"include-search (ignoredRule): {record['location']}")
-                included_records.append(record)
-            elif self.is_excluded_record(rec_file_name, rec_header_name, to_exclude):
-                logger.debug(f"exclude-search (excludedRule): {record['location']}")
-                continue
-            else:
-                # logger.debug(f"include-search (noRule): {record['location']}")
-                included_records.append(record)
-
-        return included_records
+        pass
 
     # pylint: disable=arguments-differ
     def on_post_build(self, config):
         # at mkdocs buildtime, self.config does not contain the same as config
-        try:
-            self.validate_config(plugins=config["plugins"])
-        except ValueError:
-            return config
-
-        search_index_fp = Path(config.data["site_dir"]) / "search/search_index.json"
-        with open(search_index_fp, "r") as f:
-            search_index = json.load(f)
-
-        to_exclude = self.config["exclude"]
-        if to_exclude:
-            to_exclude = self.resolve_excluded_records(to_exclude=to_exclude)
-        to_ignore = self.config["ignore"]
-        if to_ignore:
-            to_ignore = self.resolve_ignored_chapters(to_ignore=to_ignore)
-
-        if self.config["exclude_unreferenced"] and config.data["nav"] is not None:
-            navigation_items = explode_navigation(navigation=config.data["nav"])
-        else:
-            navigation_items = []
-
-        included_records = self.select_included_records(
-            search_index=search_index,
-            to_exclude=to_exclude,
-            to_ignore=to_ignore,
-            navigation_items=navigation_items,
-            exclude_unreferenced=self.config["exclude_unreferenced"],
-            exclude_tags=self.config["exclude_tags"],
-        )
-
-        logger.info(
-            f"mkdocs-exclude-search excluded {len(search_index['docs']) - len(included_records)}"
-            f" of {len(search_index['docs'])} search index records. Use `mkdocs serve -v` "
-            f"for more details."
-        )
-
-        search_index["docs"] = included_records
-        with open(search_index_fp, "w") as f:
-            json.dump(search_index, f)
-
-        return config
+        pass
